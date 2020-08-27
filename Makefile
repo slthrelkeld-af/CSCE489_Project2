@@ -1,6 +1,6 @@
 CC=g++
 CXXFLAGS=-g -Wall -Wextra -O0 -pthread
-DEPS = shellfuncts.h
+DEPS = Semaphore.h
 OBJ = babyyoda.o Semaphore.o 
 BIN = babyyoda 
 
