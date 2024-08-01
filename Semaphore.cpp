@@ -1,4 +1,3 @@
-#define _OPEN_THREADS
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -22,16 +21,14 @@
 //why ask us what language we want to use and then not use it?
 
 Semaphore::Semaphore(int count) {
-    int resourceCount; //initialize count of resources/queued processes
-    pthread_cond_t conditionVar;
-    pthread_mutex_t mutex;
+    resourceCount = count; //initialize count of resources/queued processes
     if (pthread_mutex_init(&mutex, NULL) != 0) {                                  
         perror("pthread_mutex_init() error");                                       
-        exit(1);                                                                    
+        exit(1);
     }
     if (pthread_cond_init(&conditionVar, NULL) != 0) {                                    
         perror("pthread_cond_init() error");                                        
-        exit(2);                                                                    
+        exit(2);
     }
 
     
@@ -58,10 +55,7 @@ Semaphore::~Semaphore() {
  *************************************************************************************/
 
 void Semaphore::wait() {
-    if (pthread_mutex_lock(&mutex)!=0){ //I believe the mutex lock is enabled here
-        perror("pthread_mutex_lock() error");
-        exit(3);
-    }
+    pthread_mutex_lock(&mutex);
 
     resourceCount --; //decrement resource count
 
@@ -69,12 +63,7 @@ void Semaphore::wait() {
         pthread_cond_wait(&conditionVar, &mutex);
     }
 
-    if (pthread_mutex_unlock(&mutex)!=0){ //I believe the mutex lock is disabled here
-        perror("pthread_mutex_unlock() error");
-        exit(4);
-    }
-
-
+    pthread_mutex_unlock(&mutex);
     
 }
 
@@ -85,10 +74,16 @@ void Semaphore::wait() {
  *************************************************************************************/
 
 void Semaphore::signal() {
-    this->resourceCount ++;
-    if (this.resourceCount <= 0){
+    pthread_mutex_lock(&mutex);
+
+    resourceCount ++;
+    
+    if (resourceCount <= 0){
         pthread_cond_signal(&conditionVar);
     }
+
+    pthread_mutex_unlock(&mutex);
+
 }
 
 
