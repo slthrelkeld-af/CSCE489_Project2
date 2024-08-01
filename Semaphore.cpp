@@ -1,6 +1,10 @@
+#define _OPEN_THREADS
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 #include <pthread.h>
+#include <unistd.h>
 #include "Semaphore.h"
-
 
 /*************************************************************************************
  * Semaphore (constructor) - this should take count and place it into a local variable.
@@ -10,8 +14,27 @@
  *
  *************************************************************************************/
 
-Semaphore::Semaphore(int count) {
+//using the textbook as reference
+//also using W3schools.com & geeksforgeeks because I don't know any C++ and we got no instruction on it
+//pubs.opengroup.org/onlinepubs, 
+//https://www.ibm.com/docs/en/zos/2.4.0?topic=functions-pthread-cond-wait-wait-condition-variable, 
+//https://www.ibm.com/docs/en/zos/2.4.0?topic=functions-pthread-cond-signal-signal-condition#ptcsig for pthreads reference material
+//why ask us what language we want to use and then not use it?
 
+Semaphore::Semaphore(int count) {
+    int resourceCount; //initialize count of resources/queued processes
+    pthread_cond_t conditionVar;
+    pthread_mutex_t mutex;
+    if (pthread_mutex_init(&mutex, NULL) != 0) {                                  
+        perror("pthread_mutex_init() error");                                       
+        exit(1);                                                                    
+    }
+    if (pthread_cond_init(&conditionVar, NULL) != 0) {                                    
+        perror("pthread_cond_init() error");                                        
+        exit(2);                                                                    
+    }
+
+    
 }
 
 
@@ -22,6 +45,10 @@ Semaphore::Semaphore(int count) {
  *************************************************************************************/
 
 Semaphore::~Semaphore() {
+    //
+    //would be nice if we were actually taught us anything related to how to deallocate memory in c++ before we're expected to do it.
+    pthread_cond_destroy(&conditionVar);//example syntax looks like it wants a & for this but I can't even get it to recognize the variable in the first place
+    pthread_mutex_destroy(&mutex);
 }
 
 
@@ -31,7 +58,24 @@ Semaphore::~Semaphore() {
  *************************************************************************************/
 
 void Semaphore::wait() {
+    if (pthread_mutex_lock(&mutex)!=0){ //I believe the mutex lock is enabled here
+        perror("pthread_mutex_lock() error");
+        exit(3);
+    }
 
+    resourceCount --; //decrement resource count
+
+    if (resourceCount < 0){
+        pthread_cond_wait(&conditionVar, &mutex);
+    }
+
+    if (pthread_mutex_unlock(&mutex)!=0){ //I believe the mutex lock is disabled here
+        perror("pthread_mutex_unlock() error");
+        exit(4);
+    }
+
+
+    
 }
 
 
@@ -41,7 +85,10 @@ void Semaphore::wait() {
  *************************************************************************************/
 
 void Semaphore::signal() {
-
+    this->resourceCount ++;
+    if (this.resourceCount <= 0){
+        pthread_cond_signal(&conditionVar);
+    }
 }
 
 
