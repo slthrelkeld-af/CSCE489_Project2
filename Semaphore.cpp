@@ -22,6 +22,7 @@
 
 Semaphore::Semaphore(int count) {
     resourceCount = count; //initialize count of resources/queued processes
+    printf("semaphore init with count %d", count);
     if (pthread_mutex_init(&mutex, NULL) != 0) {                                  
         perror("pthread_mutex_init() error");                                       
         exit(1);

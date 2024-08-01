@@ -20,6 +20,8 @@ pthread_mutex_t buf_mutex;
 int* buffer = nullptr; //pointer to future buffer array (size is determined at runtime, so it's this or using the list library)
 //got the idea from stack exchange: https://stackoverflow.com/questions/63888588/create-c-variable-length-global-arrays
 int consumed = 0;
+int buffer_size;
+int consumer_pointer;
 
 
 /*************************************************************************************
@@ -38,10 +40,12 @@ void *producer_routine(void *data) {
 	srand((unsigned int) time(&rand_seed));
 
 	// The current serial number (incremented)
-	unsigned int serialnum = 1;
+	int serialnum = 1;
 	
 	// We know the data pointer is an integer that indicates the number to produce
 	int left_to_produce = *((int *) data);
+
+	int producer_buffer_pointer = 0;
 
 	// Loop through the amount we're going to produce and place into the buffer
 	while (left_to_produce > 0) {
@@ -53,13 +57,14 @@ void *producer_routine(void *data) {
 		// Place item on the next shelf slot by first setting the mutex to protect our buffer vars
 		pthread_mutex_lock(&buf_mutex);
 
-		buffer[0] = serialnum;
+		buffer[producer_buffer_pointer] = serialnum;
 		serialnum++;
 		left_to_produce--;
-
+		
 		pthread_mutex_unlock(&buf_mutex);
 		
-		printf("   Yoda %d put on shelf.\n", buffer[0]);
+		printf("   Yoda %d put on shelf %d.\n", buffer[producer_buffer_pointer], producer_buffer_pointer);
+		producer_buffer_pointer = ((producer_buffer_pointer + 1)%buffer_size);
 		
 		// Semaphore signal that there are items available
 		empty->signal();
@@ -96,10 +101,12 @@ void *consumer_routine(void *data) {
 		// Take an item off the shelf
 		pthread_mutex_lock(&buf_mutex);
 	
-		printf("   Consumer bought Yoda #%d.\n", buffer[0]);
-		buffer[0] = 0;
+		printf("   Consumer bought Yoda #%d.\n", buffer[consumer_pointer]);
+		buffer[consumer_pointer] = 0;
 		consumed++;
-	
+		//max efficiency might set up a separate mutex to protect the customer pointer, but it should be quick enough that I'm going to leave it combined
+		consumer_pointer = (consumer_pointer + 1) % buffer_size;
+
 		pthread_mutex_unlock(&buf_mutex);
 
 		// Consumers wait up to one second
@@ -130,38 +137,44 @@ int main(int argv, const char *argc[]) {
 		exit(0);
 	}
 
-	// User input on the number of integers in the buffer  //WIP
-	int buffer_size = (unsigned int) strtol(argc[1], NULL, 10);
+	// User input on the number of integers in the buffer
+	buffer_size = (int) strtol(argc[1], NULL, 10);
 	buffer = new int[buffer_size];
-	buffer[0]=0;
-	printf("%s <buffer_size>\n", argc[1]);
+	for (int i=0; i < buffer_size; i++){ //initialize full buffer to zero
+		buffer[i]=0;	
+	}
+	
+	printf("%d <buffer_size>\n", buffer_size);
 
-	// User input on number of consumer threads //TODO
-	int num_consumers = (unsigned int) strtol(argc[2], NULL, 10);
-	printf("%s <num_consumers>\n", argc[2]);
+	// User input on number of consumer threads //WIP
+	int num_consumers = (int) strtol(argc[2], NULL, 10);
+	printf("%d <num_consumers>\n", num_consumers);
 
 	// User input on the number of producer repeats
-	int num_produce = (unsigned int) strtol(argc[3], NULL, 10);
-	printf("%s <num_produce>\n", argc[3]);
+	int num_produce = (int) strtol(argc[3], NULL, 10);
+	printf("%d <num_produce>\n", num_produce);
 
 
 	printf("Producing %d today.\n", num_produce);
 	
 	// Initialize our semaphores
 	empty = new Semaphore(0);
-	full = new Semaphore(1);
+	full = new Semaphore((int)buffer_size);
 
 	pthread_mutex_init(&buf_mutex, NULL); // Initialize our buffer mutex
 
 	pthread_t producer;
-	pthread_t consumer;
+	pthread_t consumers[num_consumers];
 
 	// Launch our producer thread
 	pthread_create(&producer, NULL, producer_routine, (void *) &num_produce);
 
 	// Launch our consumer thread
-	pthread_create(&consumer, NULL, consumer_routine, NULL);
-
+	for (pthread_t consumer: consumers)
+	{
+		pthread_create(&consumer, NULL, consumer_routine, NULL);
+	}
+	
 	// Wait for our producer thread to finish up
 	pthread_join(producer, NULL);
 
@@ -174,9 +187,9 @@ int main(int argv, const char *argc[]) {
 		sleep(1);
 
 	// Now make sure they all exited
-//	for (unsigned int i=0; i<NUM_CONSUMERS; i++) {
-//		pthread_join(consumers[i], NULL);
-//	}
+	for (int i=0; i<num_consumers; i++) {
+		pthread_join(consumers[i], NULL);
+	}
 
 	// We are exiting, clean up
 	delete empty;
