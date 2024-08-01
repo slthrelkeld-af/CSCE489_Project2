@@ -17,7 +17,8 @@ Semaphore *full = NULL;
 
 pthread_mutex_t buf_mutex;
 
-int buffer = 0;
+int* buffer = nullptr; //pointer to future buffer array (size is determined at runtime, so it's this or using the list library)
+//got the idea from stack exchange: https://stackoverflow.com/questions/63888588/create-c-variable-length-global-arrays
 int consumed = 0;
 
 
@@ -52,13 +53,13 @@ void *producer_routine(void *data) {
 		// Place item on the next shelf slot by first setting the mutex to protect our buffer vars
 		pthread_mutex_lock(&buf_mutex);
 
-		buffer = serialnum;
+		buffer[0] = serialnum;
 		serialnum++;
 		left_to_produce--;
 
 		pthread_mutex_unlock(&buf_mutex);
 		
-		printf("   Yoda put on shelf.\n");
+		printf("   Yoda %d put on shelf.\n", buffer[0]);
 		
 		// Semaphore signal that there are items available
 		empty->signal();
@@ -95,8 +96,8 @@ void *consumer_routine(void *data) {
 		// Take an item off the shelf
 		pthread_mutex_lock(&buf_mutex);
 	
-		printf("   Consumer bought Yoda #%d.\n", buffer);
-		buffer = 0;
+		printf("   Consumer bought Yoda #%d.\n", buffer[0]);
+		buffer[0] = 0;
 		consumed++;
 	
 		pthread_mutex_unlock(&buf_mutex);
@@ -115,7 +116,8 @@ void *consumer_routine(void *data) {
 /*************************************************************************************
  * main - Standard C main function for our storefront. 
  *
- *		Expected params: pctest <num_consumers> <max_items>
+ *		Original params: pctest <num_consumers> <max_items> //this is not actually accurate, is bull. First argument actually sets num_produce and no additonal arguments are referenced.
+ *		Project desired params: babyyoda <buffer_size>  <num_consumers> < max_items>
  *				max_items - how many items will be produced before the shopkeeper closes
  *
  *************************************************************************************/
@@ -123,13 +125,24 @@ void *consumer_routine(void *data) {
 int main(int argv, const char *argc[]) {
 
 	// Get our argument parameters
-	if (argv < 2) {
-		printf("Invalid parameters. Format: %s <max_items>\n", argc[0]);
+	if (argv < 4) {
+		printf("Invalid parameters. Format: %s <buffer_size> <num_consumers> <max_items>\n", argc[0]);
 		exit(0);
 	}
 
-	// User input on the size of the buffer
-	int num_produce = (unsigned int) strtol(argc[1], NULL, 10);
+	// User input on the number of integers in the buffer  //WIP
+	int buffer_size = (unsigned int) strtol(argc[1], NULL, 10);
+	buffer = new int[buffer_size];
+	buffer[0]=0;
+	printf("%s <buffer_size>\n", argc[1]);
+
+	// User input on number of consumer threads //TODO
+	int num_consumers = (unsigned int) strtol(argc[2], NULL, 10);
+	printf("%s <num_consumers>\n", argc[2]);
+
+	// User input on the number of producer repeats
+	int num_produce = (unsigned int) strtol(argc[3], NULL, 10);
+	printf("%s <num_produce>\n", argc[3]);
 
 
 	printf("Producing %d today.\n", num_produce);
