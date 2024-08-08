@@ -18,7 +18,6 @@
 //pubs.opengroup.org/onlinepubs, 
 //https://www.ibm.com/docs/en/zos/2.4.0?topic=functions-pthread-cond-wait-wait-condition-variable, 
 //https://www.ibm.com/docs/en/zos/2.4.0?topic=functions-pthread-cond-signal-signal-condition#ptcsig for pthreads reference material
-//why ask us what language we want to use and then not use it?
 
 Semaphore::Semaphore(int count) {
     resourceCount = count; //initialize count of resources/queued processes
@@ -37,21 +36,19 @@ Semaphore::Semaphore(int count) {
 
 
 /*************************************************************************************
- * ~Semaphore (destructor) - called when the class is destroyed. Clean up any dynamic
+ * ~Semaphore (destructor) - called when the class is destroyed. Cleans up any dynamic
  *						memory.
  *
  *************************************************************************************/
 
 Semaphore::~Semaphore() {
-    //
-    //would be nice if we were actually taught us anything related to how to deallocate memory in c++ before we're expected to do it.
     pthread_cond_destroy(&conditionVar);
     pthread_mutex_destroy(&mutex);
 }
 
 
 /*************************************************************************************
- * wait - implement a standard wait Semaphore method here
+ * wait - standard wait Semaphore method
  *
  *************************************************************************************/
 
@@ -70,7 +67,7 @@ void Semaphore::wait() {
 
 
 /*************************************************************************************
- * signal - implement a standard signal Semaphore method here
+ * signal - standard signal Semaphore method
  *
  *************************************************************************************/
 

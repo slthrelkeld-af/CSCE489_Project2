@@ -17,8 +17,8 @@ Semaphore *full = NULL;
 
 pthread_mutex_t buf_mutex;
 
-int* buffer = nullptr; //pointer to future buffer array (size is determined at runtime, so it's this or using the list library)
-//got the idea from stack exchange: https://stackoverflow.com/questions/63888588/create-c-variable-length-global-arrays
+int* buffer = nullptr; //pointer to future buffer array
+//ref'd stack exchange: https://stackoverflow.com/questions/63888588/create-c-variable-length-global-arrays
 int consumed = 0;
 int buffer_size;
 int consumer_pointer;
@@ -99,7 +99,7 @@ void *consumer_routine(void *data) {
 		// Semaphore to see if there are any items to take
 		empty->wait();
 
-		if (consumed >= num_produce) // not sure if this requires mutex or not, but I think it should be (since edits to consumed are mutex locked)
+		if (consumed >= num_produce) // Should not require mutex protection (since EDITS to consumed are mutex locked)
 		{
 			empty->signal(); //increasing the semaphore to release consumers from indefinite waits. Would break future functionality, but we no longer need it.
 			break;
@@ -144,7 +144,7 @@ void *consumer_routine(void *data) {
 
 int main(int argv, const char *argc[]) {
 
-	// Get our argument parameters
+	// Validate argument parameters
 	if (argv < 4) {
 		printf("Invalid parameters. Format: %s <buffer_size> <num_consumers> <max_items>\n", argc[0]);
 		exit(0);
@@ -157,7 +157,7 @@ int main(int argv, const char *argc[]) {
 		buffer[i]=0;	
 	}
 
-	// User input on number of consumer threads //WIP
+	// User input on number of consumer threads
 	unsigned long num_consumers = (unsigned long) strtol(argc[2], NULL, 10);
 
 	// User input on the number of producer repeats
@@ -178,7 +178,7 @@ int main(int argv, const char *argc[]) {
 	// Launch our producer thread
 	pthread_create(&producer, NULL, producer_routine, (void *) &num_produce);
 
-	// Launch our consumer thread
+	// Launch our consumer threads
 	for (pthread_t consumer: consumers)
 	{
 		pthread_create(&consumer, NULL, consumer_routine, NULL);
