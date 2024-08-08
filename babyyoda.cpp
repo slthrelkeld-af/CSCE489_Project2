@@ -22,6 +22,7 @@ int* buffer = nullptr; //pointer to future buffer array (size is determined at r
 int consumed = 0;
 int buffer_size;
 int consumer_pointer;
+int num_produce;
 
 
 /*************************************************************************************
@@ -90,14 +91,22 @@ void *producer_routine(void *data) {
 void *consumer_routine(void *data) {
 	(void) data;
 
+	printf ("	Consumer number %d has entered the store \n", (int) pthread_self());
+
 	bool quitthreads = false;
 
 	while (!quitthreads) {
 		printf("Consumer wants to buy a Yoda...\n");
 
+		if (consumed >= num_produce) // not sure if this requires mutex or not, but I think it should be (since edits to consumed are mutex locked)
+		{
+			printf("Consumer %d realizes there are no more yodas coming\n", (int) pthread_self());
+			break;
+		}
+
 		// Semaphore to see if there are any items to take
 		empty->wait();
-
+		
 		// Take an item off the shelf
 		pthread_mutex_lock(&buf_mutex);
 	
@@ -113,8 +122,16 @@ void *consumer_routine(void *data) {
 		usleep((useconds_t) (rand() % 1000000));
 
 		full->signal();
+
+		if (consumed >= num_produce)
+		{
+			printf("Consumer %d realizes there are no more yodas coming and tells the line\n", (int) pthread_self());
+			empty->signal();
+			break;
+		}
+		
 	}
-	printf("Consumer goes home.\n");
+	printf("Consumer number %d goes home\n", (int) pthread_self());
 
 	return NULL;	
 }
@@ -147,11 +164,11 @@ int main(int argv, const char *argc[]) {
 	printf("%d <buffer_size>\n", buffer_size);
 
 	// User input on number of consumer threads //WIP
-	int num_consumers = (int) strtol(argc[2], NULL, 10);
-	printf("%d <num_consumers>\n", num_consumers);
+	unsigned long num_consumers = (unsigned long) strtol(argc[2], NULL, 10);
+	printf("%lu <num_consumers>\n", num_consumers);
 
 	// User input on the number of producer repeats
-	int num_produce = (int) strtol(argc[3], NULL, 10);
+	num_produce = (int) strtol(argc[3], NULL, 10);
 	printf("%d <num_produce>\n", num_produce);
 
 
@@ -180,16 +197,15 @@ int main(int argv, const char *argc[]) {
 
 	printf("The manufacturer has completed his work for the day.\n");
 
-	printf("Waiting for consumer to buy up the rest.\n");
-
 	// Give the consumers a second to finish snatching up items
-	while (consumed < num_produce)
-		sleep(1);
-
-	// Now make sure they all exited
-	for (int i=0; i<num_consumers; i++) {
-		pthread_join(consumers[i], NULL);
+	while (consumed < num_produce){
+		printf("Waiting for consumer to buy up the rest.\n");
+		sleep(5);
 	}
+	// Now make sure they all exited // this is causing the segfault, need to use malloc or something similar since the variable size array is faulting out.
+//	for (pthread_t consumer: consumers) {
+//		pthread_join(consumer, NULL);
+//	}
 
 	// We are exiting, clean up
 	delete empty;

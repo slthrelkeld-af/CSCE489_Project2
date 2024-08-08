@@ -22,7 +22,7 @@
 
 Semaphore::Semaphore(int count) {
     resourceCount = count; //initialize count of resources/queued processes
-    printf("semaphore init with count %d", count);
+    printf("semaphore init with count %d\n", count);
     if (pthread_mutex_init(&mutex, NULL) != 0) {                                  
         perror("pthread_mutex_init() error");                                       
         exit(1);
@@ -45,7 +45,7 @@ Semaphore::Semaphore(int count) {
 Semaphore::~Semaphore() {
     //
     //would be nice if we were actually taught us anything related to how to deallocate memory in c++ before we're expected to do it.
-    pthread_cond_destroy(&conditionVar);//example syntax looks like it wants a & for this but I can't even get it to recognize the variable in the first place
+    pthread_cond_destroy(&conditionVar);
     pthread_mutex_destroy(&mutex);
 }
 
