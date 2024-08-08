@@ -64,7 +64,7 @@ void *producer_routine(void *data) {
 		
 		pthread_mutex_unlock(&buf_mutex);
 		
-		printf("   Yoda %d put on shelf %d.\n", buffer[producer_buffer_pointer], producer_buffer_pointer);
+//		printf("   Yoda %d put in buffer %d.\n", buffer[producer_buffer_pointer], producer_buffer_pointer); //test code to assure varible length buffer use
 		producer_buffer_pointer = ((producer_buffer_pointer + 1)%buffer_size);
 		
 		// Semaphore signal that there are items available
@@ -91,21 +91,19 @@ void *producer_routine(void *data) {
 void *consumer_routine(void *data) {
 	(void) data;
 
-	printf ("	Consumer number %d has entered the store \n", (int) pthread_self());
-
 	bool quitthreads = false;
 
 	while (!quitthreads) {
 		printf("Consumer wants to buy a Yoda...\n");
 
-		if (consumed >= num_produce) // not sure if this requires mutex or not, but I think it should be (since edits to consumed are mutex locked)
-		{
-			printf("Consumer %d realizes there are no more yodas coming\n", (int) pthread_self());
-			break;
-		}
-
 		// Semaphore to see if there are any items to take
 		empty->wait();
+
+		if (consumed >= num_produce) // not sure if this requires mutex or not, but I think it should be (since edits to consumed are mutex locked)
+		{
+			empty->signal(); //increasing the semaphore to release consumers from indefinite waits. Would break future functionality, but we no longer need it.
+			break;
+		}
 		
 		// Take an item off the shelf
 		pthread_mutex_lock(&buf_mutex);
@@ -125,13 +123,11 @@ void *consumer_routine(void *data) {
 
 		if (consumed >= num_produce)
 		{
-			printf("Consumer %d realizes there are no more yodas coming and tells the line\n", (int) pthread_self());
-			empty->signal();
+			empty->signal(); //increasing the semaphore to release consumers from indefinite waits. Would break future functionality, but we no longer need it.
 			break;
 		}
 		
 	}
-	printf("Consumer number %d goes home\n", (int) pthread_self());
 
 	return NULL;	
 }
@@ -160,16 +156,12 @@ int main(int argv, const char *argc[]) {
 	for (int i=0; i < buffer_size; i++){ //initialize full buffer to zero
 		buffer[i]=0;	
 	}
-	
-	printf("%d <buffer_size>\n", buffer_size);
 
 	// User input on number of consumer threads //WIP
 	unsigned long num_consumers = (unsigned long) strtol(argc[2], NULL, 10);
-	printf("%lu <num_consumers>\n", num_consumers);
 
 	// User input on the number of producer repeats
 	num_produce = (int) strtol(argc[3], NULL, 10);
-	printf("%d <num_produce>\n", num_produce);
 
 
 	printf("Producing %d today.\n", num_produce);
@@ -181,7 +173,7 @@ int main(int argv, const char *argc[]) {
 	pthread_mutex_init(&buf_mutex, NULL); // Initialize our buffer mutex
 
 	pthread_t producer;
-	pthread_t consumers[num_consumers];
+	pthread_t consumers[num_consumers] = {0};
 
 	// Launch our producer thread
 	pthread_create(&producer, NULL, producer_routine, (void *) &num_produce);
@@ -200,12 +192,12 @@ int main(int argv, const char *argc[]) {
 	// Give the consumers a second to finish snatching up items
 	while (consumed < num_produce){
 		printf("Waiting for consumer to buy up the rest.\n");
-		sleep(5);
+		sleep(1);
 	}
-	// Now make sure they all exited // this is causing the segfault, need to use malloc or something similar since the variable size array is faulting out.
-//	for (pthread_t consumer: consumers) {
-//		pthread_join(consumer, NULL);
-//	}
+	// Now make sure they all exited
+	for (pthread_t consumer: consumers) {
+		pthread_join(consumer, NULL);
+	}
 
 	// We are exiting, clean up
 	delete empty;
