@@ -144,10 +144,18 @@ void *consumer_routine(void *data) {
 
 int main(int argv, const char *argc[]) {
 
-	// Validate argument parameters
+	// Validate argument parameters. Will not error out when encountering additional parameters, but will ignore any additional arguments.
 	if (argv < 4) {
 		printf("Invalid parameters. Format: %s <buffer_size> <num_consumers> <max_items>\n", argc[0]);
 		exit(0);
+	}
+
+	for (int i = 1; i < 4; i++){
+		if (strtol(argc[i], NULL, 10) < 1)
+		{
+			printf("Invalid parameter. Parameter %d is not a positive nonzero integer\n", i);
+			exit(0);
+		}
 	}
 
 	// User input on the number of integers in the buffer
