@@ -128,7 +128,7 @@ void *consumer_routine(void *data) {
 		}
 		
 	}
-
+	printf("Consumer goes home\n");
 	return NULL;	
 }
 
